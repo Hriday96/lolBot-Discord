@@ -22,6 +22,7 @@
     "dotenv": "^8.2.0",
     "firebase": "^7.24.0",
     "firebase-admin": "^9.2.0",
+    "fuzzy-search": "^3.2.1",
     "node-fetch": "^2.6.1"
   }
 }
