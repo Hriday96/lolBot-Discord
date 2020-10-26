@@ -51,6 +51,26 @@ fs.readdir('./cmds', (err, files) => {
 // Ready notification in console
 client.on('ready', async () => {
   console.log('Hello. I am ready!');
+
+  setInterval(() => {
+    async function getSteamAppList() {
+      let response = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/');
+      let data = await response.json();
+
+      const jsonString = JSON.stringify(data.applist);
+
+      fs.writeFile('./steamAppList.json', jsonString, err => {
+        if (err) {
+          console.log('Error writing file', err)
+        } else {
+          console.log(`A total of ${data.applist.apps.length} entries were updated!`);
+        }
+      })
+
+    }
+
+    getSteamAppList();
+  }, 6 * 3600000);
 });
 
 // Command handler
