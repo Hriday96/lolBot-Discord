@@ -58,12 +58,20 @@ client.on('ready', async () => {
       let data = await response.json();
 
       const jsonString = JSON.stringify(data.applist);
+      let current = new Date().toLocaleString({
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+  
 
       fs.writeFile('./steamAppList.json', jsonString, err => {
         if (err) {
           console.log('Error writing file', err)
         } else {
-          console.log(`A total of ${data.applist.apps.length} entries were updated!`);
+          console.log(`[${current}]: A total of ${data.applist.apps.length} entries were updated!`);
         }
       })
 
