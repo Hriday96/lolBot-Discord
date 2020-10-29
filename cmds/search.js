@@ -49,119 +49,13 @@ module.exports.run = async (client, message, args, db) => {
     }
 
     if(currentArrPage.length <= 10) {
-      for (let i = 0; i < currentArrPage.length; i++) {
-        embedResponse
-          .addFields({
-            name: `**${i + 1}**:`, value: `**${currentArrPage[i].name}**\nAppID: ${currentArrPage[i].appid}`, inline: true
-          })
-      }
-
-      message.channel.send(embedResponse).then(async msg => {
-        for(let i = 0; i < currentArrPage.length; i++) {
-          await msg.react(emojis[i])
-        }
-
-        msg.awaitReactions(filter, {
-          max: 1,
-          time: 25000,
-          errors: ['Time']
-        }).then(collected => {
-
-          const reaction = collected.first();
-
-          db.collection('users').doc(message.author.id).get().then(q => {
-
-            const currentWishlist = q.data().wishlist;
-
-            let checkExist;
-
-            for(let i = 0; i < currentArrPage.length; i++) {
-              for(let x = 0; x < currentWishlist.length; x++) {
-
-                if(currentArrPage[i].appid === currentWishlist[x].appid) {
-                  checkExist = true;
-                  break;
-                } else {
-                  checkExist = false;
-                }
-              }
-  
-              if(reaction.emoji.name === emojis[i]) {
-  
-                if(checkExist === true){
-                  message.reply(`you already have **${currentArrPage[i].name}** in your wishlist!`)
-                  break;
-                } else if(checkExist === false) {
-                  addToWishlist(currentArrPage[i], message.author.id);
-                  message.reply(`I have added **${currentArrPage[i].name}** to your wishlist!`)
-                  break;
-                }
-  
-              }
-            }
-          })
-        })
-      });
+      showEmbed(currentArrPage, emojis, filter);
     } else {
 
       currentArrPage = getResponseArray(steamList, gameToSearch, offset, length);
 
-      for (let i = 0; i < currentArrPage.length; i++) {
-        embedResponse
-          .addFields({
-            name: `${i + 1}:`, value: `**${currentArrPage[i].name}**\nAppID: ${currentArrPage[i].appid}`, inline: true
-          })
-          .setFooter(`You are currently on page ${currentPage} of ${pages}.\nClick on the ${emojis[10]} reaction to go to the next page`)
-      }
+      showEmbed(currentArrPage, emojis, filter);
 
-      message.channel.send(embedResponse).then(async msg => {
-        for(let i = 0; i <= currentArrPage.length; i++) {
-          await msg.react(emojis[i])
-        }
-
-        msg.awaitReactions(filter, {
-          max: 1,
-          time: 25000,
-          errors: ['Time']
-        }).then(collected => {
-
-          const reaction = collected.first();
-
-          db.collection('users').doc(message.author.id).get().then(q => {
-
-            const currentWishlist = q.data().wishlist;
-
-            let checkExist;
-
-            for(let i = 0; i < currentArrPage.length; i++) {
-              for(let x = 0; x < currentWishlist.length; x++) {
-
-                if(currentArrPage[i].appid === currentWishlist[x].appid) {
-                  checkExist = true;
-                  break;
-                } else {
-                  checkExist = false;
-                }
-              }
-  
-              if(reaction.emoji.name === emojis[i]) {
-  
-                if(checkExist === true){
-                  message.reply(`you already have **${currentArrPage[i].name}** in your wishlist!`)
-                  break;
-                } else if(checkExist === false) {
-                  addToWishlist(currentArrPage[i], message.author.id);
-                  message.reply(`I have added **${currentArrPage[i].name}** to your wishlist!`)
-                  break;
-                }
-              } else if(reaction.emoji.name === emojis[10]) {
-
-              }
-            }
-          })
-        })
-
-      })
     }
   });
 
@@ -172,7 +66,7 @@ module.exports.run = async (client, message, args, db) => {
           'userID': userID,
           'wishlist': []
         });
-        return;
+        break;
       }
     });
   };
@@ -219,6 +113,62 @@ module.exports.run = async (client, message, args, db) => {
     } else {
       return responseArr.slice(off, len)
     }
+  }
+
+  function showEmbed(arrayToShow, reactionsArr, filterFunction) {
+    for (let i = 0; i < arrayToShow.length; i++) {
+      embedResponse
+        .addFields({
+          name: `**${i + 1}**:`, value: `**${arrayToShow[i].name}**\nAppID: ${arrayToShow[i].appid}`, inline: true
+        })
+    }
+
+    message.channel.send(embedResponse).then(async msg => {
+      for(let i = 0; i < arrayToShow.length; i++) {
+        await msg.react(reactionsArr[i])
+      }
+
+      msg.awaitReactions(filterFunction, {
+        max: 1,
+        time: 25000,
+        errors: ['Time']
+      }).then(collected => {
+
+        const reaction = collected.first();
+
+        db.collection('users').doc(message.author.id).get().then(q => {
+
+          const currentWishlist = q.data().wishlist;
+
+          let checkExist;
+
+          for(let i = 0; i < arrayToShow.length; i++) {
+            for(let x = 0; x < currentWishlist.length; x++) {
+
+              if(arrayToShow[i].appid === currentWishlist[x].appid) {
+                checkExist = true;
+                break;
+              } else {
+                checkExist = false;
+              }
+            }
+
+            if(reaction.emoji.name === reactionsArr[i]) {
+
+              if(checkExist === true){
+                message.reply(`you already have **${arrayToShow[i].name}** in your wishlist!`)
+                break;
+              } else if(checkExist === false) {
+                addToWishlist(arrayToShow[i], message.author.id);
+                message.reply(`I have added **${arrayToShow[i].name}** to your wishlist!`)
+                break;
+              }
+
+            }
+          }
+        })
+      })
+    });
   }
 
 }
