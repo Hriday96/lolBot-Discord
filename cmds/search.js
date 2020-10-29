@@ -66,7 +66,9 @@ module.exports.run = async (client, message, args, db) => {
           'userID': userID,
           'wishlist': []
         });
-        break;
+        return;
+      } else {
+        return;
       }
     });
   };
