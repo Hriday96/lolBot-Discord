@@ -26,8 +26,6 @@ module.exports.run = async (client, message, args, db) => {
     gameToSearch = gameToSearch.toLowerCase();
     gameToSearch = gameToSearch.replace(/[^a-zA-Z0-9]/g, '');
 
-    let responseArr = [];
-
     const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '➡️'];
 
     const filter = (reaction, user) => emojis.includes(reaction.emoji.name) && user.id === message.author.id;
@@ -37,45 +35,29 @@ module.exports.run = async (client, message, args, db) => {
       .setTitle('Here is a list of all the games I could find that match your search')
       .setDescription('After finding the game you are looking for, you can react with the number corresponding to its number in the list to add the game to your wishlist.');
 
-  
-    for (let i = 0; i < steamList.apps.length; i++){
-  
-      let gameDB = String(steamList.apps[i].name);
-      gameDB = gameDB.toLowerCase();
-      gameDB = gameDB.replace(/[^a-zA-Z0-9]/g, '');
-  
-      if (gameDB.includes(gameToSearch)) {
-        responseArr.push(steamList.apps[i]);
-      }
-    }
-
-    responseArr.forEach((item) => {
-      item.length = item.name.length;
-    })
-
-    responseArr.sort(function(a, b){return a.length - b.length});
-
+    let currentArrPage = getResponseArray(steamList, gameToSearch);
+    
     let pages;
     let currentPage = 1;
     let offset = 0;
     let length = offset + 10;
 
-    if(responseArr.length % 10 === 0) {
-      pages = Math.floor(responseArr.length / 10);
+    if(currentArrPage.length % 10 === 0) {
+      pages = Math.floor(currentArrPage.length / 10);
     } else {
-      pages = Math.floor(responseArr.length / 10) + 1;
+      pages = Math.floor(currentArrPage.length / 10) + 1;
     }
 
-    if(responseArr.length <= 10) {
-      for (let i = 0; i < responseArr.length; i++) {
+    if(currentArrPage.length <= 10) {
+      for (let i = 0; i < currentArrPage.length; i++) {
         embedResponse
           .addFields({
-            name: `**${i + 1}**:`, value: `**${responseArr[i].name}**\nAppID: ${responseArr[i].appid}`, inline: true
+            name: `**${i + 1}**:`, value: `**${currentArrPage[i].name}**\nAppID: ${currentArrPage[i].appid}`, inline: true
           })
       }
 
       message.channel.send(embedResponse).then(async msg => {
-        for(let i = 0; i < responseArr.length; i++) {
+        for(let i = 0; i < currentArrPage.length; i++) {
           await msg.react(emojis[i])
         }
 
@@ -87,23 +69,100 @@ module.exports.run = async (client, message, args, db) => {
 
           const reaction = collected.first();
 
-          for(let i = 0; i < responseArr.length; i++) {
+          db.collection('users').doc(message.author.id).get().then(q => {
 
-            if(reaction.emoji.name === emojis[i]) {
-              userWishlistExists(message.author.id)
-              addToWishlist(responseArr[i], message.author.id);
+            const currentWishlist = q.data().wishlist;
+
+            let checkExist;
+
+            for(let i = 0; i < currentArrPage.length; i++) {
+              for(let x = 0; x < currentWishlist.length; x++) {
+
+                if(currentArrPage[i].appid === currentWishlist[x].appid) {
+                  checkExist = true;
+                  break;
+                } else {
+                  checkExist = false;
+                }
+              }
+  
+              if(reaction.emoji.name === emojis[i]) {
+  
+                if(checkExist === true){
+                  message.reply(`you already have **${currentArrPage[i].name}** in your wishlist!`)
+                  break;
+                } else if(checkExist === false) {
+                  addToWishlist(currentArrPage[i], message.author.id);
+                  message.reply(`I have added **${currentArrPage[i].name}** to your wishlist!`)
+                  break;
+                }
+  
+              }
             }
-          }
-          
-
-        }).catch(collected => {
-
+          })
         })
-      })
+      });
     } else {
-      
-    }
 
+      currentArrPage = getResponseArray(steamList, gameToSearch, offset, length);
+
+      for (let i = 0; i < currentArrPage.length; i++) {
+        embedResponse
+          .addFields({
+            name: `${i + 1}:`, value: `**${currentArrPage[i].name}**\nAppID: ${currentArrPage[i].appid}`, inline: true
+          })
+          .setFooter(`You are currently on page ${currentPage} of ${pages}.\nClick on the ${emojis[10]} reaction to go to the next page`)
+      }
+
+      message.channel.send(embedResponse).then(async msg => {
+        for(let i = 0; i <= currentArrPage.length; i++) {
+          await msg.react(emojis[i])
+        }
+
+        msg.awaitReactions(filter, {
+          max: 1,
+          time: 25000,
+          errors: ['Time']
+        }).then(collected => {
+
+          const reaction = collected.first();
+
+          db.collection('users').doc(message.author.id).get().then(q => {
+
+            const currentWishlist = q.data().wishlist;
+
+            let checkExist;
+
+            for(let i = 0; i < currentArrPage.length; i++) {
+              for(let x = 0; x < currentWishlist.length; x++) {
+
+                if(currentArrPage[i].appid === currentWishlist[x].appid) {
+                  checkExist = true;
+                  break;
+                } else {
+                  checkExist = false;
+                }
+              }
+  
+              if(reaction.emoji.name === emojis[i]) {
+  
+                if(checkExist === true){
+                  message.reply(`you already have **${currentArrPage[i].name}** in your wishlist!`)
+                  break;
+                } else if(checkExist === false) {
+                  addToWishlist(currentArrPage[i], message.author.id);
+                  message.reply(`I have added **${currentArrPage[i].name}** to your wishlist!`)
+                  break;
+                }
+              } else if(reaction.emoji.name === emojis[10]) {
+
+              }
+            }
+          })
+        })
+
+      })
+    }
   });
 
   function userWishlistExists(userID) {
@@ -134,38 +193,31 @@ module.exports.run = async (client, message, args, db) => {
     });
   }
 
-  function checkGameInWishlist(userID, gameToAddID) {
-    let dbWishlistArr;
+  function getResponseArray(fullDB, searchedGame, off, len) {
 
-    db.collection('users').doc(userID).get().then(q => {
+    let responseArr = [];
 
-      dbWishlistArr = q.data().wishlist;
-      
-    }).then(() => {
-      let existCheck = false;
-
-      for(let i = 0; i < dbWishlistArr.length; i++) {
-
-        if(dbWishlistArr[i].appid === gameToAddID) {
-          existCheck = true;
-          return existCheck;
-        } else {
-          existCheck = false;
-          return existCheck;
-        };
+    for (let i = 0; i < fullDB.apps.length; i++){
+  
+      let gameDB = String(steamList.apps[i].name);
+      gameDB = gameDB.toLowerCase();
+      gameDB = gameDB.replace(/[^a-zA-Z0-9]/g, '');
+  
+      if (gameDB.includes(searchedGame)) {
+        responseArr.push(fullDB.apps[i]);
       }
-    })
-  }
-
-  async function existCheck(userID, appID) {
-    try {
-      const exist = await checkGameInWishlist(userID, appID)
-      console.log(`${userID} - ${appID}`);
-      console.log(exist);
-      return exist;
     }
-    catch(e) {
-      return e;
+
+    responseArr.forEach((item) => {
+      item.length = item.name.length;
+    })
+
+    responseArr.sort(function(a, b){return a.length - b.length});
+
+    if (responseArr.length <= 10) {
+      return responseArr;
+    } else {
+      return responseArr.slice(off, len)
     }
   }
 
