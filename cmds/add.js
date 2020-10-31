@@ -26,11 +26,6 @@ module.exports.run = async (client, message, args, db) => {
   gameToSearch = gameToSearch.toLowerCase();
   gameToSearch = gameToSearch.replace(/[^a-zA-Z0-9]/g, '');
 
-
-
-  embedResponse
-    
-
   let currentArrPage = getResponseArray(steamList, gameToSearch);
     
   let pages;
@@ -46,13 +41,47 @@ module.exports.run = async (client, message, args, db) => {
 
   if(currentArrPage.length <= 10) {
     await showEmbed(currentArrPage, emojis, filter);
-   } //else {
+   } else {
 
-  //   currentArrPage = getResponseArray(steamList, gameToSearch, offset, length);
+    let fullArray = getResponseArray(steamList, gameToSearch);
 
-  //   showEmbed(currentArrPage, emojis, filter);
+    while(currentPage <= pages) {
 
-  // }
+      if(currentPage !== pages) {
+
+        console.log(fullArray.length)
+
+        currentArrPage = fullArray.slice(offset, length);
+
+        console.log(currentArrPage);
+    
+        // showEmbed(currentArrPage, emojis, filter);
+
+      } else if(currentPage === pages) {
+        currentArrPage = fullArray.slice(offset, length)
+        console.log(currentArrPage)
+
+        // showEmbed(currentArrPage, emojis, filter);
+      }
+
+      offset = length;
+
+      if(currentPage < pages) {
+        length = offset + 10;
+      } else if (currentPage === pages) {
+        length = fullArray.length;
+      }
+    
+      console.log(`${offset} - ${length}`)
+      console.log(`${currentPage} - ${pages}`)
+
+      currentPage++;
+
+    } 
+
+
+
+  }
 
   function userWishlistExists(userID) {
     db.collection('users').doc(userID).get().then(q => {
@@ -161,6 +190,33 @@ module.exports.run = async (client, message, args, db) => {
         })
       })
     });
+  }
+
+  function iterResponse(responseArr) {
+    let offset = 0;
+
+    let innerFunc = (len, forward = true) => {
+        // If the offset is at 9 and you have 15 games in the array. 
+        // In the next call we do not want to increment the offset to 19. 
+        // We want to do it to the last item in the array 
+        if (forward) {
+            let remainingItems =  responseArr.length - offset;
+
+            // Ternary operator
+            let offsetIncrement = remainingItems > len ? len : remainingItems;
+            offset += offsetIncrement;
+            
+            return responseArr.slice(offset, offsetIncrement)
+        }
+        let remainingItems =  offset;
+        let offsetIncrement = remainingItems > len ? len : remainingItems;
+        let end = offset;
+        offset -= offsetIncrement;
+        
+        return responseArr.slice(offset, end)
+    }
+    
+    return innerFunc;
   }
 
 }
